@@ -1048,7 +1048,7 @@ def cropEM(parent):
     	        #of Cells, University of Colorado: Boulder (bio3d.colorado.edu/imod)
     	        #under the GNU GPL (29 June 2007)
 
-        myPath = os.path.realpath(".")
+		myPath = os.path.realpath(".")
 		outpath=savepath+cellName+"_EM.tiff"
     	        mptiffstring=myPath + "/newstack -siz " + str(xsize) + "," + str(ysize) +" -off " + str(xoff) + "," + str(yoff) + " -ori -sec " + str(zstart) + "-" + str(zend) + " " + parent.emdir.get() + " -fo TIF " + outpath
 		subprocess.call(mptiffstring,shell=True)
