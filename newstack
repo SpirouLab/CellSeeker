@@ -1,4 +1,4 @@
 #!/bin/sh
-export LD_LIBRARY_PATH="/media/feynman/3TBBackup/Scripts/CellSeeker/qtlib:/media/feynman/3TBBackup/Scripts/CellSeeker/lib:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$PWD/qtlib:$PWD/lib"
 
-"/media/feynman/3TBBackup/Scripts/CellSeeker/realbin/newstack" "$@"
+"$PWD/realbin/newstack" "$@"
