@@ -57,6 +57,7 @@ class CellSeekerGUI(tk.Tk):
         self.xypix=tk.StringVar()
         self.zpix=tk.StringVar()
         self.celldiam=tk.StringVar()
+        self.cellbuffer=tk.StringVar()
         self.progress = tk.StringVar()
         self.cellInfo = []
         self.nucarray = []
@@ -116,8 +117,6 @@ class CellSeekerGUI(tk.Tk):
             self.update_idletasks()
             self.frames[NucProcessingGUI].update_idletasks()
             self.emarray = loadImage(self.emdir.get(),0)
-
-            #self.emarray = self.emarray[20:(self.emarray.shape[0]-20),20:(self.emarray.shape[1]-20),:]
 
             #Proceed to cell verification
             print("--- %s seconds ---" % (time.time() - self.start_time))
@@ -188,8 +187,7 @@ class StartUp(tk.Frame):
 
         #get nucleus segmentation file
 
-        self.controller.nucdir.set('/media/feynman/3TBBackup/Scripts/CellSeeker/P2/p2_bin18_Simple_Segmentation.h5') #for whole P2 bin18 volume
-        #self.controller.nucdir.set('/media/feynman/3TBBackup/Scripts/CellSeeker/P2_5/p2_5_bin16_sample_nucleus_seg.h5') #for P2.5 small sample
+        self.controller.nucdir.set('')
 
         nucmessage = ttk.Label(self, text = "Nucleus segmentation:")
         nucmessage.grid(column=0,row=0, sticky="E")
@@ -200,9 +198,8 @@ class StartUp(tk.Frame):
 
         #get EM image file
 
-        self.controller.emdir.set('/media/feynman/3TBBackup/Datasets/P2/p2_bin18.tiff') #for whole P2 bin18 volume
-        #self.controller.emdir.set('/media/feynman/3TBBackup/Scripts/CellSeeker/P2_5/p2_5_bin16_sample.h5') #for P2.5 small sample
-
+        self.controller.emdir.set('')
+        
         emmessage = ttk.Label(self, text = "EM Images:")
         emmessage.grid(column=0,row=1, sticky="E")
         emdir = ttk.Entry(self, textvariable=self.controller.emdir, width=40)
@@ -212,9 +209,8 @@ class StartUp(tk.Frame):
 
         #get pixel dimension
 
-        self.controller.xypix.set("102.6")  #for whole P2 bin18 volume
-        #self.controller.xypix.set("78.4") #for P2.5 small sample
-
+        self.controller.xypix.set("")
+        
         xymessage = ttk.Label(self, text = "Pixel dimension (nm):")
         xymessage.grid(column=0,row=2, sticky="E")
         xypix = ttk.Entry(self, textvariable=self.controller.xypix, width=10)
@@ -222,9 +218,8 @@ class StartUp(tk.Frame):
 
         #get z-slice thickness
 
-        self.controller.zpix.set("60") #for whole P2 bin18 volume
-        #self.controller.zpix.set("50") #for P2.5 small sample
-
+        self.controller.zpix.set("")
+        
         zpixmessage = ttk.Label(self, text = "Z-slice thickness (nm):")
         zpixmessage.grid(column=0,row=3, sticky="E")
         zpix = ttk.Entry(self, textvariable=self.controller.zpix, width=10)
@@ -232,16 +227,25 @@ class StartUp(tk.Frame):
 
         #get cell diameter
 
-        self.controller.celldiam.set("20") #for P2 bin18 whole volume and P2.5 small sample
+        self.controller.celldiam.set("")
 
         cdmessage = ttk.Label(self, text = "Estimated Cell Diameter (um):")
         cdmessage.grid(column=0,row=4, sticky="E")
         cd = ttk.Entry(self, textvariable=self.controller.celldiam, width=10)
         cd.grid(column=1, columnspan=2, row=4, sticky="W")
 
+        #get buffer (% of cell diameter to add to window size)
+
+        self.controller.cellbuffer.set("")
+
+        cbmessage = ttk.Label(self, text = "Buffer for Edges (% of cell diameter; 0-1):")
+        cbmessage.grid(column=0,row=5, sticky="E")
+        cb = ttk.Entry(self, textvariable=self.controller.cellbuffer, width=10)
+        cb.grid(column=1, columnspan=2, row=5, sticky="W")
+
         #set all initialization variables and continue
         b = ttk.Button(self, text = "OK", command = lambda: self.controller.show_frame(NucProcessingGUI))
-        b.grid(column=0, columnspan=4, row=5, pady=10)
+        b.grid(column=0, columnspan=4, row=6, pady=10)
 
     def load_nuc_file(self):
         fname = askopenfilename(initialdir="/home", filetypes=(("TIFF file(s)","*.tiff"),("TIFF file(s)","*.tif"),("HDF5 file","*.h5")))
@@ -325,8 +329,8 @@ class ExtractGUI(tk.Frame):
 
         path=self.controller.nucdir.get()
         path=path.replace('\\','/')
-	path=path[0:(path.rfind('/')-1)]
-	self.controller.exdir.set(path)
+        path=path[0:(path.rfind('/')-1)]
+        self.controller.exdir.set(path)
 
         nucmessage = ttk.Label(self, text = "Choose a path for export:")
         nucmessage.grid(column=0,row=0, sticky="E")
@@ -397,8 +401,6 @@ def cellFind(parent):
 
     nucarray = loadImage(parent.nucdir.get(),1)
 
-    #nucarray = nucarray[20:(nucarray.shape[0]-20),20:(nucarray.shape[1]-20),:]
-
     nucarray=filterNuclei2D(nucarray,parent)
 
     #create structured element to fill holes
@@ -425,8 +427,9 @@ def cellFind(parent):
 
     #filter nuclei in 3D to combine connected components
     nucarray,sizes,centers=filterNuclei3D(nucarray,parent)
+    buffer = float(parent.cellbuffer.get())/2
 
-    sizes,centers,extents=filterPartialCells(nucarray,sizes,centers,parent)
+    sizes,centers,extents=filterPartialCells(nucarray,sizes,centers,buffer,parent)
 
     voxelvol=(float(parent.xypix.get()) ** 2) * float(parent.zpix.get())
     cellinfo=[]
@@ -446,8 +449,8 @@ def filterNuclei2D(nucarray,parent):
 
     while slicecount!=fullmask.shape[2]:
         currentslice="Processing Z-slice " + str(slicecount+1) + " of " + str(nucarray.shape[2])
-	parent.progress.set(currentslice)
-	parent.frames[NucProcessingGUI].update_idletasks()
+        parent.progress.set(currentslice)
+        parent.frames[NucProcessingGUI].update_idletasks()
 
         im=nucarray[:,:,slicecount]
         label_im, nb_labels = ndimage.label(im)
@@ -456,8 +459,11 @@ def filterNuclei2D(nucarray,parent):
         sortsize=np.copy(sizes)
         sortsize.sort()
         sortsize=sortsize[::-1]
-        if sortsize[1]>(0.4*sortsize[0]):
-            maxsize=sortsize[1]
+        if len(sortsize)>1:
+            if sortsize[1]>(0.4*sortsize[0]):
+                maxsize=sortsize[1]
+            else:
+                maxsize=sortsize[0]
         else:
             maxsize=sortsize[0]
         mask_size = sizes < 0.4*maxsize
@@ -481,8 +487,8 @@ def filterNuclei2D(nucarray,parent):
 
     while slicecount!=fullmask.shape[1]:
         currentslice="Processing Y-slice " + str(slicecount+1) + " of " + str(nucarray.shape[1])
-	parent.progress.set(currentslice)
-	parent.frames[NucProcessingGUI].update_idletasks()
+        parent.progress.set(currentslice)
+        parent.frames[NucProcessingGUI].update_idletasks()
 
         im2=nucarray[:,slicecount,:]
         label_im2, nb_labels2 = ndimage.label(im2)
@@ -491,8 +497,11 @@ def filterNuclei2D(nucarray,parent):
         sortsize2=np.copy(sizes2)
         sortsize2.sort()
         sortsize2=sortsize2[::-1]
-        if sortsize2[1]>(0.4*sortsize2[0]):
-            maxsize2=sortsize2[1]
+        if len(sortsize2)>1:
+            if sortsize2[1]>(0.4*sortsize2[0]):
+                maxsize2=sortsize2[1]
+            else:
+                maxsize2=sortsize2[0]
         else:
             maxsize2=sortsize2[0]
         mask_size3 = sizes2 < 0.4*maxsize2
@@ -527,7 +536,7 @@ def filterNuclei3D(nucarray,parent):
     com = np.round(ndimage.measurements.center_of_mass(nucarray,label_im2,labels2))
     return label_im2,sizes2,com
 
-def filterPartialCells(nucarray,sizes,centers,parent):
+def filterPartialCells(nucarray,sizes,centers,buffer,parent):
 
     ThreeDmsg="Filtering partial cells...please wait."
     parent.progress.set(ThreeDmsg)
@@ -556,13 +565,13 @@ def filterPartialCells(nucarray,sizes,centers,parent):
         else:
             keep[count]=1
 
-            #add a 10% buffer
-            xmin=xmin-(0.05*xextent/2)
-            xmax=xmax+(0.05*xextent/2)
-            ymin=ymin-(0.05*yextent/2)
-            ymax=ymax-(0.05*yextent/2)
-            zmin=zmin-(0.05*zextent/2)
-            zmax=zmax-(0.05*zextent/2)
+            #add buffer specified by user
+            xmin=xmin-round(buffer*xextent/2)
+            xmax=xmax+round(buffer*xextent/2)
+            ymin=ymin-round(buffer*yextent/2)
+            ymax=ymax-round(buffer*yextent/2)
+            zmin=zmin-round(buffer*zextent/2)
+            zmax=zmax-round(buffer*zextent/2)
 
             if xmin<0:
                 xmin=0
@@ -892,13 +901,14 @@ def getNucImages(parent):
 
 def getVerified(parent,current,lastvalue):      #For some reason, the hotkey code doesn't work yet
     #initialize variables
-    if parent.verifiedcells[current]!=4:
-        if parent.verifiedcells[current]==1:
-            parent.wm_title("CellSeeker: Cell Verification...Accepted")
-        else:
-            parent.wm_title("CellSeeker: Cell Verification...Rejected")
-        parent.update_idletasks()
-        parent.frames[NucVerifyGUI].update_idletasks()
+    if len(parent.verifiedcells)>1:
+        if parent.verifiedcells[current]!=4:
+            if parent.verifiedcells[current]==1:
+                parent.wm_title("CellSeeker: Cell Verification...Accepted")
+            else:
+                parent.wm_title("CellSeeker: Cell Verification...Rejected")
+            parent.update_idletasks()
+            parent.frames[NucVerifyGUI].update_idletasks()
 
 
     if lastvalue!=2 and lastvalue!=3 and lastvalue!='f':
@@ -1001,8 +1011,8 @@ def cropEM(parent):
                 cellName='Cell_' + str(cellNumber)
                 dirname=parent.exdir.get() + '/ExtractedVolumes/' + cellName +'/'
                 for part in cellParts:
-			tempname=dirname + part + '/'
-			checkdir(tempname)
+                    tempname=dirname + part + '/'
+                    checkdir(tempname)
 
                 currentslice="Exporting cell " + str(cellNumber) + " of " + str(int(np.sum(parent.verifiedcells))) + ": Saving location information"
        	        parent.progress.set(currentslice)
@@ -1048,10 +1058,11 @@ def cropEM(parent):
     	        #of Cells, University of Colorado: Boulder (bio3d.colorado.edu/imod)
     	        #under the GNU GPL (29 June 2007)
 
-		myPath = os.path.realpath(".")
-		outpath=savepath+cellName+"_EM.tiff"
+    	        myPath = os.path.realpath(".")
+    	        outpath=savepath+cellName+"_EM.tiff"
     	        mptiffstring=myPath + "/newstack -siz " + str(xsize) + "," + str(ysize) +" -off " + str(xoff) + "," + str(yoff) + " -ori -sec " + str(zstart) + "-" + str(zend) + " " + parent.emdir.get() + " -fo TIF " + outpath
-		subprocess.call(mptiffstring,shell=True)
+                print mptiffstring
+    	        subprocess.call(mptiffstring,shell=True)
     	        Precarve(parent,outpath,cellNumber)
     	        cellNumber += 1
 
