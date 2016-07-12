@@ -52,7 +52,7 @@ H5Py (http://www.h5py.org/)</p>
 <br>
 <p>After cells with nuclei have been identified, each cell will be presented in three cross-sectional views (x,y,z) through the center of the image volume to be produced. Users have the option of approving or rejecting each cell individually using the buttons under each image set. This ensures that only good cells are output and artifacts are removed.</p><br>
 
-<h3>Cell Output</h3>
+<h3>Cell Output:</h3>
 <p>Following the verification of all found cells, CellSeeker runs a multi-step output process consisting of the following:<br>
 <ul>
 <li>Creation of the following directory structure in a user-defined location to store identified cell images and Ilastik projects:
