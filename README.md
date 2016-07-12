@@ -78,7 +78,7 @@ H5Py (http://www.h5py.org/)</p>
 <li>Extraction of EM image multipage TIFF containing the current cell to CellBody/cell#_EM.tiff. (Currently accomplished using the <i>newstack</i> script written for the IMOD software produced by the Boulder Laboratory for 3-D Electron Microscopy of Cells, University of Colorado: Boulder (bio3d.colorado.edu/imod) under the GNU GPL (29 June 2007).)</li>
 <li>Preprocessing of EM data for use in the "carving" workflow in Ilastik, which produces a project file saved to CellBody/cell#_EM.ilp. Preprocessing is accomplished using a headless Ilastik instance with the carving workflow and preprocessing settings of a step-edges filter for edge identification and a sigma size of 1.2 pixels (currently hard-coded, may be changed to user-controlled in future update).</li>
 </ul></p>
-<b>Note:</b><p>Folders other than the CellBody folder will be empty, and are produced simply for convenience for future segmentation.</p>
+<p><b>Note:</b>Folders other than the CellBody folder will be empty, and are produced simply for convenience for future segmentation.</p>
 
 # Output Usage
 
