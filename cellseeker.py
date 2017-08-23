@@ -93,40 +93,40 @@ class CellSeekerGUI(tk.Tk):
         #run cell extraction if NucProcessingGUI window is visible
 
         if cont.__name__=="NucProcessingGUI":
-            #start timer
-            self.start_time=time.time()
-            self.progress.set("Importing nucleus segmentation data...")
-            self.wm_title("CellSeeker: Finding Cells...")
-            self.update_idletasks()
-            self.frames[NucProcessingGUI].update_idletasks()
-
-            #Compute some variables necessary for later processing
-            self.xextent=int(round((float(self.celldiam.get())*1000)/float(self.xypix.get())))
-       	    self.yextent=int(self.xextent)
-            self.zextent=int(round((float(self.celldiam.get())*1000)/float(self.zpix.get())))
-
-            #Get list of identified cells
-            self.nucarray,self.cellInfo =cellFind(self)
-
-            #Save nucarray to a file for access later
-            #tiffSave(self)
-
-            #Get EM images and load into numpy array
-            self.wm_title("CellSeeker: Getting EM...")
-            self.progress.set("Finding cells finished. " + str(len(self.cellInfo)) + " possible cells found. Fetching EM images...")
-            self.update_idletasks()
-            self.frames[NucProcessingGUI].update_idletasks()
-            self.emarray = loadImage(self.emdir.get(),0)
-
-            #Proceed to cell verification
-            print("--- %s seconds ---" % (time.time() - self.start_time))
-            self.wm_title("CellSeeker: Cell Verification")
-            self.progress.set("EM Images loaded. Beginning cell verification.")
-            b = ttk.Button(self.frames[NucProcessingGUI], text = "Click to Continue.", command = lambda: self.show_frame(NucVerifyGUI))
-            b.grid(column=0,row=1, pady=25)
-            self.frames[NucProcessingGUI].grid()
-            self.update_idletasks()
-            self.frames[NucProcessingGUI].update_idletasks()
+			#start timer
+			self.start_time=time.time()
+			self.progress.set("Importing nucleus segmentation data...")
+			self.wm_title("CellSeeker: Finding Cells...")
+			self.update_idletasks()
+			self.frames[NucProcessingGUI].update_idletasks()
+			
+			#Compute some variables necessary for later processing
+			self.xextent=int(round((float(self.celldiam.get())*1000)/float(self.xypix.get())))
+			self.yextent=int(self.xextent)
+			self.zextent=int(round((float(self.celldiam.get())*1000)/float(self.zpix.get())))
+			
+			#Get list of identified cells
+			self.nucarray,self.cellInfo =cellFind(self)
+			
+			#Save nucarray to a file for access later
+			#tiffSave(self)
+			
+			#Get EM images and load into numpy array
+			self.wm_title("CellSeeker: Getting EM...")
+			self.progress.set("Finding cells finished. " + str(len(self.cellInfo)) + " possible cells found. Fetching EM images...")
+			self.update_idletasks()
+			self.frames[NucProcessingGUI].update_idletasks()
+			self.emarray = loadImage(self.emdir.get(),0)
+			
+			#Proceed to cell verification
+			print("--- %s seconds ---" % (time.time() - self.start_time))
+			self.wm_title("CellSeeker: Cell Verification")
+			self.progress.set("EM Images loaded. Beginning cell verification.")
+			b = ttk.Button(self.frames[NucProcessingGUI], text = "Click to Continue.", command = lambda: self.show_frame(NucVerifyGUI))
+			b.grid(column=0,row=1, pady=25)
+			self.frames[NucProcessingGUI].grid()
+			self.update_idletasks()
+			self.frames[NucProcessingGUI].update_idletasks()
 
         if cont.__name__=="NucVerifyGUI":
 
@@ -773,131 +773,132 @@ def Precarve(parent,path,cellNumber):
         subprocess.call(ilastikcmd2, shell=True, stdout=pplog)
 
 def getNucImages(parent):
-        #Define local variables
-        nucarray=parent.nucarray
-        emarray=parent.emarray
-        cellInfo=parent.cellInfo
-        imgs = []
-        count=0
+	#Define local variables
+	nucarray=parent.nucarray
+	emarray=parent.emarray
+	cellInfo=parent.cellInfo
+	imgs = []
+	count=0
+	
 	while count!=len(cellInfo):
-           currentslice="Extracting nucleus image " + str(count+1) + " of " + str(len(cellInfo))
-	   parent.progress.set(currentslice)
-	   parent.frames[NucVerifyGUI].update_idletasks()
-	   temparray=[]
-
-           x = cellInfo[count][1][0]
-	   y = cellInfo[count][1][1]
-	   z = cellInfo[count][1][2]
-
-	   xmin=int(round(cellInfo[count][3][0]))
-	   xmax=int(round(cellInfo[count][3][1]))
-	   ymin=int(round(cellInfo[count][3][2]))
-	   ymax=int(round(cellInfo[count][3][3]))
-	   zmin=int(round(cellInfo[count][3][4]))
-	   zmax=int(round(cellInfo[count][3][5]))
-
-	   if count==0:
-            print str(xmin) + " " + str(xmax) + " " + str(ymin) + " " + str(ymax) + " " + str(zmin) + " " + str(zmax)
-
-	   #for x,y
-	   src = np.copy(nucarray[xmin:xmax,ymin:ymax,z])
-	   src2 = np.copy(emarray[xmin:xmax,ymin:ymax,z])
-
-	   mask_nuc1 = np.ma.masked_not_equal(src, src[x-xmin,y-ymin],copy=True).mask
-	   mask_nuc2 = np.ma.masked_equal(src, src[x-xmin,y-ymin],copy=True).mask
-           rgbimage1=np.zeros([src.shape[0],src.shape[1],4],dtype='uint8')
-	   foralpha1=rgbimage1[:,:,3]
-	   foralpha1[:,:]=140
-
-           if np.sum(mask_nuc2)>(0.5*src.size):
-               src[mask_nuc1]=254
-               src[mask_nuc2]=0
-               foralpha1[mask_nuc2]=0
-           else:
-               src[mask_nuc1]=0
-               src[mask_nuc2]=254
-               foralpha1[mask_nuc1]=0
-
-           rgbimage1[:,:,0] = src
-	   new_nuc_image1=Image.fromarray(rgbimage1,mode="RGBA")
-
-           rgbimage2=np.empty([src2.shape[0],src2.shape[1],4],dtype='uint8')
-           src2,cdf=histeq(src2,254)
-           rgbimage2[:,:,0] = np.copy(src2)
-	   rgbimage2[:,:,1] = rgbimage2[:,:,2] = rgbimage2[:,:,0]
-	   rgbimage2[:,:,3] = 254
-	   new_em_image1=Image.fromarray(rgbimage2,mode="RGBA")
-
-	   new_image1=Image.alpha_composite(new_em_image1,new_nuc_image1)
-	   temparray.append(new_image1)
-
-	   #for x,z
-	   src3 = np.copy(nucarray[xmin:xmax,y,zmin:zmax])
-	   src4 = np.copy(emarray[xmin:xmax,y,zmin:zmax])
-
-	   mask_nuc3 = np.ma.masked_not_equal(src3, src3[x-xmin,z-zmin],copy=True).mask
-	   mask_nuc4 = np.ma.masked_equal(src3, src3[x-xmin,z-zmin],copy=True).mask
-           rgbimage3=np.zeros([src3.shape[0],src3.shape[1],4],dtype='uint8')
-	   foralpha2=rgbimage3[:,:,3]
-	   foralpha2[:,:]=140
-
-           if np.sum(mask_nuc4)>(0.5*src3.size):
-               src3[mask_nuc3]=254
-               src3[mask_nuc4]=0
-               foralpha2[mask_nuc4]=0
-           else:
-               src3[mask_nuc3]=0
-               src3[mask_nuc4]=254
-               foralpha2[mask_nuc3]=0
-
-           rgbimage3[:,:,0] = src3
-	   new_nuc_image2=Image.fromarray(rgbimage3,mode="RGBA")
-
-           rgbimage4=np.empty([src4.shape[0],src4.shape[1],4],dtype='uint8')
-           src4,cdf=histeq(src4,254)
-           rgbimage4[:,:,0] = np.copy(src4)
-	   rgbimage4[:,:,1] = rgbimage4[:,:,2] = rgbimage4[:,:,0]
-	   rgbimage4[:,:,3] = 254
-	   new_em_image2=Image.fromarray(rgbimage4,mode="RGBA")
-
-	   new_image2=Image.alpha_composite(new_em_image2,new_nuc_image2)
-	   temparray.append(new_image2)
-
-	   #for y,z
-	   src5 = np.copy(nucarray[x,ymin:ymax,zmin:zmax])
-	   src6 = np.copy(emarray[x,ymin:ymax,zmin:zmax])
-
-	   mask_nuc5 = np.ma.masked_not_equal(src5, src5[y-ymin,z-zmin],copy=True).mask
-	   mask_nuc6 = np.ma.masked_equal(src5, src5[y-ymin,z-zmin],copy=True).mask
-           rgbimage5=np.zeros([src5.shape[0],src5.shape[1],4],dtype='uint8')
-	   foralpha3=rgbimage5[:,:,3]
-	   foralpha3[:,:]=140
-
-           if np.sum(mask_nuc6)>(0.5*src5.size):
-               src5[mask_nuc5]=254
-               src5[mask_nuc6]=0
-               foralpha3[mask_nuc6]=0
-           else:
-               src5[mask_nuc5]=0
-               src5[mask_nuc6]=254
-               foralpha3[mask_nuc5]=0
-
-	   rgbimage5[:,:,0] = src5
-	   new_nuc_image3=Image.fromarray(rgbimage5,mode="RGBA")
-
-           rgbimage6=np.empty([src6.shape[0],src6.shape[1],4],dtype='uint8')
-           src6,cdf=histeq(src6,254)
-           rgbimage6[:,:,0] = np.copy(src6)
-	   rgbimage6[:,:,1] = rgbimage6[:,:,2] = rgbimage6[:,:,0]
-	   rgbimage6[:,:,3] = 254
-	   new_em_image3=Image.fromarray(rgbimage6,mode="RGBA")
-
-	   new_image3=Image.alpha_composite(new_em_image3,new_nuc_image3)
-	   temparray.append(new_image3)
-
-           imgs.append(temparray)
-           count += 1
-        return imgs
+		currentslice="Extracting nucleus image " + str(count+1) + " of " + str(len(cellInfo))
+		parent.progress.set(currentslice)
+		parent.frames[NucVerifyGUI].update_idletasks()
+		temparray=[]
+		
+		x = int(round(cellInfo[count][1][0]))
+		y = int(round(cellInfo[count][1][1]))
+		z = int(round(cellInfo[count][1][2]))
+		
+		xmin=int(round(cellInfo[count][3][0]))
+		xmax=int(round(cellInfo[count][3][1]))
+		ymin=int(round(cellInfo[count][3][2]))
+		ymax=int(round(cellInfo[count][3][3]))
+		zmin=int(round(cellInfo[count][3][4]))
+		zmax=int(round(cellInfo[count][3][5]))
+		
+		if count==0:
+			print str(xmin) + " " + str(xmax) + " " + str(ymin) + " " + str(ymax) + " " + str(zmin) + " " + str(zmax)
+			
+		#for x,y
+		src = np.copy(nucarray[xmin:xmax,ymin:ymax,z])
+		src2 = np.copy(emarray[xmin:xmax,ymin:ymax,z])
+		
+		mask_nuc1 = np.ma.masked_not_equal(src, src[x-xmin,y-ymin],copy=True).mask
+		mask_nuc2 = np.ma.masked_equal(src, src[x-xmin,y-ymin],copy=True).mask
+		rgbimage1=np.zeros([src.shape[0],src.shape[1],4],dtype='uint8')
+		foralpha1=rgbimage1[:,:,3]
+		foralpha1[:,:]=140
+		
+		if np.sum(mask_nuc2)>(0.5*src.size):
+			src[mask_nuc1]=254
+			src[mask_nuc2]=0
+			foralpha1[mask_nuc2]=0
+		else:
+			src[mask_nuc1]=0
+			src[mask_nuc2]=254
+			foralpha1[mask_nuc1]=0
+			
+		rgbimage1[:,:,0] = src
+		new_nuc_image1=Image.fromarray(rgbimage1,mode="RGBA")
+		
+		rgbimage2=np.empty([src2.shape[0],src2.shape[1],4],dtype='uint8')
+		src2,cdf=histeq(src2,254)
+		rgbimage2[:,:,0] = np.copy(src2)
+		rgbimage2[:,:,1] = rgbimage2[:,:,2] = rgbimage2[:,:,0]
+		rgbimage2[:,:,3] = 254
+		new_em_image1=Image.fromarray(rgbimage2,mode="RGBA")
+		
+		new_image1=Image.alpha_composite(new_em_image1,new_nuc_image1)
+		temparray.append(new_image1)
+		
+		#for x,z
+		src3 = np.copy(nucarray[xmin:xmax,y,zmin:zmax])
+		src4 = np.copy(emarray[xmin:xmax,y,zmin:zmax])
+		
+		mask_nuc3 = np.ma.masked_not_equal(src3, src3[x-xmin,z-zmin],copy=True).mask
+		mask_nuc4 = np.ma.masked_equal(src3, src3[x-xmin,z-zmin],copy=True).mask
+		rgbimage3=np.zeros([src3.shape[0],src3.shape[1],4],dtype='uint8')
+		foralpha2=rgbimage3[:,:,3]
+		foralpha2[:,:]=140
+		
+		if np.sum(mask_nuc4)>(0.5*src3.size):
+			src3[mask_nuc3]=254
+			src3[mask_nuc4]=0
+			foralpha2[mask_nuc4]=0
+		else:
+			src3[mask_nuc3]=0
+			src3[mask_nuc4]=254
+			foralpha2[mask_nuc3]=0
+			
+		rgbimage3[:,:,0] = src3
+		new_nuc_image2=Image.fromarray(rgbimage3,mode="RGBA")
+		
+		rgbimage4=np.empty([src4.shape[0],src4.shape[1],4],dtype='uint8')
+		src4,cdf=histeq(src4,254)
+		rgbimage4[:,:,0] = np.copy(src4)
+		rgbimage4[:,:,1] = rgbimage4[:,:,2] = rgbimage4[:,:,0]
+		rgbimage4[:,:,3] = 254
+		new_em_image2=Image.fromarray(rgbimage4,mode="RGBA")
+		
+		new_image2=Image.alpha_composite(new_em_image2,new_nuc_image2)
+		temparray.append(new_image2)
+		
+		#for y,z
+		src5 = np.copy(nucarray[x,ymin:ymax,zmin:zmax])
+		src6 = np.copy(emarray[x,ymin:ymax,zmin:zmax])
+		
+		mask_nuc5 = np.ma.masked_not_equal(src5, src5[y-ymin,z-zmin],copy=True).mask
+		mask_nuc6 = np.ma.masked_equal(src5, src5[y-ymin,z-zmin],copy=True).mask
+		rgbimage5=np.zeros([src5.shape[0],src5.shape[1],4],dtype='uint8')
+		foralpha3=rgbimage5[:,:,3]
+		foralpha3[:,:]=140
+		
+		if np.sum(mask_nuc6)>(0.5*src5.size):
+			src5[mask_nuc5]=254
+			src5[mask_nuc6]=0
+			foralpha3[mask_nuc6]=0
+		else:
+			src5[mask_nuc5]=0
+			src5[mask_nuc6]=254
+			foralpha3[mask_nuc5]=0
+			
+		rgbimage5[:,:,0] = src5
+		new_nuc_image3=Image.fromarray(rgbimage5,mode="RGBA")
+		
+		rgbimage6=np.empty([src6.shape[0],src6.shape[1],4],dtype='uint8')
+		src6,cdf=histeq(src6,254)
+		rgbimage6[:,:,0] = np.copy(src6)
+		rgbimage6[:,:,1] = rgbimage6[:,:,2] = rgbimage6[:,:,0]
+		rgbimage6[:,:,3] = 254
+		new_em_image3=Image.fromarray(rgbimage6,mode="RGBA")
+		
+		new_image3=Image.alpha_composite(new_em_image3,new_nuc_image3)
+		temparray.append(new_image3)
+		
+		imgs.append(temparray)
+		count += 1
+	return imgs
 
 def getVerified(parent,current,lastvalue):      #For some reason, the hotkey code doesn't work yet
     #initialize variables
