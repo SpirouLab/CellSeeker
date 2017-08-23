@@ -15,8 +15,8 @@ Purpose: Given EM data and masks of nuclei in TIFF or HDF5 format,
 Known Issues: ????
 
 Usage:  python cellseeker.py
-
 '''
+
 import numpy as np
 import glob
 import sys
